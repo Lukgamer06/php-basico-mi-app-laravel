@@ -4,22 +4,58 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: container-laravel
+    restart: unless-stopped
+    working_dir: /var/www/html
+    environment:
+      DB_CONNECTION: mysql
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_DATABASE: laravel
+      DB_USERNAME: laravel
+      DB_PASSWORD: laravel
     volumes:
       - ./php-basico:/var/www/html
     expose:
       - "9000"
+    depends_on:
+      mysql:
+        condition: service_healthy
 
   apache:
-    image: php:8.2-apache
+    build:
+      context: .
+      dockerfile: Dockerfile.apache
     container_name: container-apache
+    restart: unless-stopped
     ports:
       - "8000:80"
     volumes:
-      - ./php-basico:/var/www/html
-      - ./apache.conf:/etc/apache2/sites-enabled/000-default.conf
+      - ./php-basico:/var/www/html:ro
+      - ./apache.conf:/etc/apache2/sites-enabled/000-default.conf:ro
     depends_on:
-      - app
-    command: >
-      bash -c "docker-php-ext-install pdo pdo_mysql &&
-      a2enmod rewrite proxy proxy_fcgi &&
-      apache2-foreground"
+      app:
+        condition: service_started
+
+  mysql:
+    image: mysql:8.4
+    container_name: container-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: laravel
+      MYSQL_USER: laravel
+      MYSQL_PASSWORD: laravel
+      MYSQL_ROOT_PASSWORD: root
+    volumes:
+      - mysql_data:/var/lib/mysql
+    expose:
+      - "3306"
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+
+
+volumes:
+  mysql_data:
