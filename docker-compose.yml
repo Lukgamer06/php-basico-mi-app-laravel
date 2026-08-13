@@ -1,0 +1,25 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: container-laravel
+    volumes:
+      - ./php-basico:/var/www/html
+    expose:
+      - "9000"
+
+  apache:
+    image: php:8.2-apache
+    container_name: container-apache
+    ports:
+      - "8000:80"
+    volumes:
+      - ./php-basico:/var/www/html
+      - ./apache.conf:/etc/apache2/sites-enabled/000-default.conf
+    depends_on:
+      - app
+    command: >
+      bash -c "docker-php-ext-install pdo pdo_mysql &&
+      a2enmod rewrite proxy proxy_fcgi &&
+      apache2-foreground"
